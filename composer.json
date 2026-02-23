@@ -1,0 +1,58 @@
+{
+  "name": "sosupp/slimer-desktop",
+  "type": "library",
+  "keywords": [
+    "sosupp",
+    "slimer-desktop"
+  ],
+  "authors": [
+    {
+      "name": "Prosper Sosu",
+      "email": "prospersosu@gmail.com"
+    }
+  ],
+  "homepage": "https://github.com/sosupp/slimer-desktop",
+  "require": {
+    "php": "^8.0|^8.1|^8.2|^8.3",
+    "illuminate/support": "^12.52",
+    "laravel/sanctum": "^4.3",
+    "nativephp/desktop": "^2.1",
+    "sosupp/slimer-tenancy": "^1.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^12.5",
+    "orchestra/testbench": "*"
+  },
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Sosupp\\SlimerDesktop\\": "src/"
+    },
+    "files": [
+      "src/helpers.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Sosupp\\SlimerDesktop\\Tests\\": "tests"
+    }
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit",
+    "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Sosupp\\SlimerDesktop\\SlimerDesktopServiceProvider"
+      ],
+      "aliases": {
+        "SlimerDesktop": "Sosupp\\SlimerDesktop\\SlimerDesktopFacade"
+      }
+    }
+  }
+  
+}
