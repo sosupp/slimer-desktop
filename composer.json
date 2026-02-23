@@ -14,7 +14,7 @@
   "homepage": "https://github.com/sosupp/slimer-desktop",
   "require": {
     "php": "^8.0|^8.1|^8.2|^8.3",
-    "illuminate/support": "^12.52",
+    "illuminate/support": "*",
     "laravel/sanctum": "^4.3",
     "nativephp/desktop": "^2.1",
     "sosupp/slimer-tenancy": "^1.0"
