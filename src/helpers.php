@@ -1,6 +1,8 @@
 <?php
 
+use Firebase\JWT\JWT;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 if (!function_exists('updateEnv')) {
     function updateEnv(string $key, mixed $value, bool $override = true): bool
@@ -41,5 +43,38 @@ if (!function_exists('updateEnv')) {
         File::put($envFilePath, $envContents);
 
         return true;
+    }
+}
+
+if (!function_exists('remoteSyncToken')) {
+    function remoteSyncToken()
+    {
+        $token = cache()->get('sync_remote_token');
+
+        if ($token) {
+            return $token;
+        }
+
+        $secret = config('slimerdesktop.jwt.secret');
+        $payload = [
+            'iss' => config('services.desktop.jwt.iss'),
+            'iat' => now()->timestamp,
+            'exp' => now()->addHours(12)->timestamp,
+            'source' => 'local',
+        ];
+
+        $token = JWT::encode($payload, $secret, 'HS256');
+
+        cache()->put('sync_remote_token', $token, now()->addHours(12));
+
+        return $token;
+    }
+}
+
+if (!function_exists('cleanTenantName')) {
+    function cleanTenantName(string $name): string
+    {
+        $cleaned = preg_replace('/[^a-zA-Z0-9]/', '', $name);
+        return Str::lower($cleaned);
     }
 }

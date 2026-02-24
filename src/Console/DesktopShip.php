@@ -30,7 +30,7 @@ class DesktopShip extends Command
     {
         $this->info("🚀 NativePHP - Preping for Production");
 
-        $this->call('app:desktop-prep');
+        $this->call('app:slimer-prep');
         // Change some .env variables values
         updateEnv(key: 'APP_ENV', value: 'production');
         updateEnv(key: 'APP_DEBUG', value: 'false');
@@ -40,7 +40,7 @@ class DesktopShip extends Command
         updateEnv(key: 'SLIMER_DESKTOP_ENABLED', value: 'true');
         updateEnv(key: 'SLIMER_DESKTOP_SETUP', value: 'false');
         updateEnv(key: 'SLIMER_DESKTOP_TENANT_KEY', value: null);
-        
+
         $this->updateEnvs();
 
         // $this->getLatestReleases($tagVersion);

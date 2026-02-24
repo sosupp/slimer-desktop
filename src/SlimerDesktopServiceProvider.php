@@ -6,7 +6,7 @@ use Sosupp\SlimerDesktop\Console\DesktopBuild;
 use Sosupp\SlimerDesktop\Console\DesktopPrep;
 use Sosupp\SlimerDesktop\Console\DesktopShip;
 
-class SlimerDesktoopServiceProvider extends ServiceProvider
+class SlimerDesktopServiceProvider extends ServiceProvider
 {
     /**
      * Register services.
@@ -36,6 +36,10 @@ class SlimerDesktoopServiceProvider extends ServiceProvider
             // Commands
             $this->customCommands();
         }
+
+        // Routes
+        $this->loadRoutesFrom(__DIR__. '/../routes/api.php');
+        
     }
 
     protected function customCommands()

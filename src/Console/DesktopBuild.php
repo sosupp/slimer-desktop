@@ -30,9 +30,9 @@ class DesktopBuild extends Command
     {
         $this->info("🚀 NativePHP - Preping for local development");
 
-        $this->call('app:desktop-prep');
+        $this->call('slimer:desktop-prep');
         updateEnv(key: 'APP_ENV', value: 'local');
-        
+
         $this->call('native:run');
 
     }
