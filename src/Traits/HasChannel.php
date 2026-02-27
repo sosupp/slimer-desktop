@@ -10,11 +10,6 @@ trait HasChannel
         return $this->morphOne(RecordChannel::class, 'record');
     }
 
-    // public function getChannelAttribute(): string
-    // {
-    //     return $this->channelRecord?->channel ?? 'local';
-    // }
-
     public function scopeLocal($query)
     {
         return $query->whereHas('channelRecord', fn ($q) => $q->where('channel', 'local'));
