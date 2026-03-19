@@ -30,25 +30,55 @@ class DesktopShip extends Command
     {
         $this->info("🚀 NativePHP - Preping for Production");
 
-        $this->call('app:slimer-prep');
-        // Change some .env variables values
-        updateEnv(key: 'APP_ENV', value: 'production');
-        updateEnv(key: 'APP_DEBUG', value: 'false');
-        updateEnv(key: 'DB_CONNECTION', value: 'sqlite');
-        updateEnv(key: 'DB_PORT', value: 3306);
-        updateEnv(key: 'DB_DATABASE', value: 'database/database.sqlite');
-        updateEnv(key: 'SLIMER_DESKTOP_ENABLED', value: 'true');
-        updateEnv(key: 'SLIMER_DESKTOP_SETUP', value: 'false');
-        updateEnv(key: 'SLIMER_DESKTOP_TENANT_KEY', value: null);
+        if($this->ask('Is nativephp git repo issue as in electron-builder.mjs fixed?')){
+            // 1. Pre-build Environment Check
+            if (PHP_OS_FAMILY === 'Windows') {
+                $this->warn("Checking for locked processes...");
 
-        $this->updateEnvs();
+                // Kill any dangling Electron or Node processes that lock the vendor folder
+                exec('taskkill /F /IM electron.exe /T 2>NUL');
+                exec('taskkill /F /IM node.exe /T 2>NUL');
 
-        // $this->getLatestReleases($tagVersion);
-        // $this->createDraftRelease($newTag);
+                // Small sleep to allow Windows to release file handles
+                sleep(2);
+            }
 
-        $forOs = $this->option('os');
-        $this->nativePublish($forOs);
+            // 2. Verify Directory Access
+            $electronPath = base_path('vendor/nativephp/desktop/resources/electron/node_modules');
+            if (File::exists($electronPath) && !is_writable($electronPath)) {
+                $this->error("❌ The Electron node_modules directory is locked or not writable.");
+                $this->line("Try running your terminal as Administrator or closing VS Code.");
+                return 1;
+            }
 
+            // Change some .env variables values
+            updateEnv(key: 'APP_ENV', value: 'production');
+            updateEnv(key: 'APP_DEBUG', value: 'false');
+            updateEnv(key: 'DB_CONNECTION', value: 'sqlite');
+            updateEnv(key: 'DB_PORT', value: 3306);
+            updateEnv(key: 'DB_DATABASE', value: 'database/database.sqlite');
+            updateEnv(key: 'SLIMER_DESKTOP_ENABLED', value: 'true');
+            updateEnv(key: 'SLIMER_DESKTOP_SETUP', value: 'false');
+            updateEnv(key: 'SLIMER_DESKTOP_TENANT_KEY', value: null);
+
+            $tagVersion = $this->updateEnvs();
+
+            // $newTag = $this->getLatestReleases($tagVersion);
+            // $this->createDraftRelease($newTag);
+
+            // run user provided commands
+            $this->runUserCommands();
+
+
+            $forOs = $this->option('os');
+            $this->nativePublish($forOs);
+
+            return 0;
+
+        }
+
+        $this->comment('Temporarly fix nativephp repo issue in electron-builder.mjs and run again');
+        return 1;
     }
 
     private function updateEnvs()
@@ -84,7 +114,7 @@ class DesktopShip extends Command
 
         $env = preg_replace(
             $keyPattern,
-            "NATIVEPHP_APP_VERSION='{$nextVersion}'",
+            "NATIVEPHP_APP_VERSION={$nextVersion}",
             $env
         );
 
@@ -127,6 +157,7 @@ class DesktopShip extends Command
 
     private function createDraftRelease($newTag)
     {
+        // $newTag = 'v'.$newTag;
         $github = app(GithubReleaseService::class);
 
         // 1) Ensure draft exists FIRST (no git tag yet)
@@ -148,7 +179,6 @@ class DesktopShip extends Command
         }
 
 
-
     }
 
     private function nativePublish($os = 'win')
@@ -156,7 +186,10 @@ class DesktopShip extends Command
         // Run NativePHP publish
         $this->info("Building and publishing app...");
 
-        $publish = new Process(['php', 'artisan', 'native:publish '.$os], base_path());
+        $publish = new Process([
+            'php', 'artisan', 'native:publish', '--env=production'
+        ], base_path());
+
         $publish->setTimeout(null);
         $publish->run(function ($type, $buffer) {
             echo $buffer;
@@ -168,7 +201,23 @@ class DesktopShip extends Command
         }
 
         $this->info("🎉 Release artifacts uploaded to draft GitHub Release!");
+        $this->comment(
+            'If release and build artefacts are not being available and not sent to github or updater provider, check issue with git repo in electron-builder.mjs from the nativephp package.'
+        );
     }
 
+
+    private function runUserCommands()
+    {
+        $commands = config('slimerdesktop.commands.ship');
+
+        if(empty($commands)){
+            return;
+        }
+
+        foreach ($commands as $command) {
+            $this->call($command);
+        }
+    }
 
 }

@@ -2,10 +2,7 @@
 
 namespace Sosupp\SlimerDesktop\Console;
 
-use App\Services\Api\GithubReleaseService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use Symfony\Component\Process\Process;
 
 class DesktopBuild extends Command
 {
@@ -33,9 +30,21 @@ class DesktopBuild extends Command
         $this->call('slimer:desktop-prep');
         updateEnv(key: 'APP_ENV', value: 'local');
 
+        // run user provided commands
+        $commands = config('slimerdesktop.commands.build');
+
+        if(empty($commands)){
+            return;
+        }
+
+        foreach ($commands as $command) {
+            $this->call($command);
+        }
+
         $this->call('native:run');
 
     }
 
 
 }
+ 

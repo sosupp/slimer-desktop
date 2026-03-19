@@ -51,11 +51,23 @@ class DesktopPrep extends Command
         
         updateEnv(key: 'GITHUB_REPO', value: null, override: false);
         updateEnv(key: 'GITHUB_OWNER', value: null, override: false);
+        updateEnv(key: 'GITHUB_TOKEN', value: null, override: false);
         updateEnv(key: 'GITHUB_AUTOUPDATE_TOKEN', value: null, override: false);
-        updateEnv(key: 'GITHUB_PRIVATE', value: true, override: false);
+        updateEnv(key: 'GITHUB_PRIVATE', value: 'true', override: false);
         updateEnv(key: 'GITHUB_CHANNEL', value: 'latest');
         updateEnv(key: 'GITHUB_RELEASE_TYPE', value: 'draft');
         updateEnv(key: 'GITHUB_RELEASE_TOKEN', value: null, override: false);
+
+        // run user provided commands
+        $commands = config('slimerdesktop.commands.prep');
+
+        if(empty($commands)){
+            return;
+        }
+
+        foreach ($commands as $command) {
+            $this->call($command);
+        }
 
     }
 }

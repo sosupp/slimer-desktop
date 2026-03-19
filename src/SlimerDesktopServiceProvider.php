@@ -26,12 +26,12 @@ class SlimerDesktopServiceProvider extends ServiceProvider
 
         if($this->app->runningInConsole()){
             $this->publishes([
-                __DIR__.'/../config/config.php' => config_path('slimertenancy.php'),
-            ], 'slimer-tenancy-config');
+                __DIR__.'/../config/config.php' => config_path('slimerdesktop.php'),
+            ], 'slimer-desktop-config');
 
             $this->publishes([
                 __DIR__.'/../database/migrations' => database_path('migrations'),
-            ], 'slimer-landlord-migrations');
+            ], 'slimer-desktop-migrations');
 
             // Commands
             $this->customCommands();

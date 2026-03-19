@@ -14,9 +14,9 @@ return [
 
     'release' => [
         'github' => [
-            'owner' => 'GITHUB_OWNER',
-            'repo' => 'GITHUB_REPO',
-            'token' => 'GITHUB_RELEASE_TOKEN',
+            'owner' => env('GITHUB_OWNER'),
+            'repo' => env('GITHUB_REPO'),
+            'token' => env('GITHUB_TOKEN'),
         ]
     ],
 
@@ -39,6 +39,16 @@ return [
 
     'tenant' => [
         'key' => env('SLIMER_DESKTOP_TENANT_KEY')
+    ],
+
+    'commands' => [
+        'prep' => [],
+        'build' => [
+            // 'app:desktop-default-data' // just an example command
+        ],
+        'ship' => [
+            // 'app:desktop-default-data'
+        ]
     ],
 
 ];
