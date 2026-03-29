@@ -16,6 +16,7 @@ return new class extends Migration
                 $table->id();
                 $table->string('model');
                 $table->unsignedBigInteger('model_id')->nullable();
+                $table->uuid('model_uid')->nullable();
                 $table->string('action');
                 $table->json('payload');
                 $table->unsignedInteger('version')->default(1);
