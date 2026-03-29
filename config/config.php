@@ -51,4 +51,13 @@ return [
         ]
     ],
 
+    /**
+     * When using desktop with a corresponding web version -
+     * bidirection if true will allow remote data to be pushed to local when there is internet.
+     * @todo Currently does not work bidrection
+     */
+    'syncs' => [
+        'bidirection' => env('SLIMER_DESKTOP_SYN_BIDIRECTION', false),
+    ],
+
 ];

@@ -2,16 +2,59 @@
 
 namespace Sosupp\SlimerDesktop\Http\Controllers\Api;
 
-use App\Http\Controllers\TenantAwareController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Sosupp\SlimerDesktop\Http\Controllers\Tenant\TenantAwareController;
 use Sosupp\SlimerTenancy\Models\Landlord\Tenant;
 
 class LocalToRemoteController extends TenantAwareController
 {
+    public function push(Request $request)
+    {
+        // For non-tenant user of the app
+        if(!config('slimertenancy.enabled')){
+            $result = $this->bulkFlow($request);
+            return response()->json(['status' => 'ok']);
+        }
+
+        $data = $request->all();
+        $payload = $data['payload'];
+        $model = $data['model'];
+        $table = $model;
+
+        // Check for tenant and it should be tenant aware
+        $tenant = Tenant::where('subdomain', $data['tenant'])->first();
+
+        if (! $tenant) {
+            return response()->json([
+                'status' => 'tenant_not_found'
+            ], 404);
+        }
+
+        $result = $this->inTenant($tenant, function() use($request){
+            $this->bulkFlow($request); 
+        });
+
+        if($result){
+            Log::info("{$table} record synced", ['id' => $payload['uid']]);
+
+            return response()->json([
+                'message' => "{$table} Record synced successfully",
+                'uid' => $payload['uid'],
+                'status' => 'success'
+            ]);
+        }
+
+        return response()->json([
+            'message' => "{$table} record failed to sync",
+            'uid' => $payload['uid'],
+            'status' => 'sync_failed'
+        ], 500);
+    }
+    
     public function single(Request $request, string $table)
     {
         $data = $request->all();
@@ -98,6 +141,29 @@ class LocalToRemoteController extends TenantAwareController
                 ],
                 $payload
             );
+    }
+
+    protected function bulkFlow($request)
+    {
+        foreach ($request->logs as $log) {
+            $modelClass = $log['model'];
+
+            if ($log['action'] === 'deleted') {
+                $modelClass::where('uid', $log['uid'])->delete();
+                continue;
+            }
+
+            $model = $modelClass::find($log['uid']);
+
+            if (!$model) {
+                $modelClass::create($log['payload']);
+                continue;
+            }
+
+            if (($log['version'] ?? 0) > ($model->version ?? 0)) {
+                $model->update($log['payload']);
+            }
+        }
     }
 
 }

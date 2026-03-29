@@ -1,33 +1,38 @@
 <?php
 namespace Sosupp\SlimerDesktop\Traits;
 
-use Sosupp\SlimerDesktop\Models\Tenant\RecordChannel;
-
 trait HasChannel
 {
-    public function channelRecord()
+    public static function bootHasChannel(): void
     {
-        return $this->morphOne(RecordChannel::class, 'record');
+        static::creating(function ($model) {
+            // Check if the model is allowed to use channels
+            if ($model->usesChannel()) {
+                $model->forceFill([
+                    'channel' => config('slimerdesktop.app.channel')
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Default check: Does this model use channels?
+     * Models can override this to return false.
+     */
+    public function usesChannel(): bool
+    {
+        return true;
     }
 
     public function scopeLocal($query)
     {
-        return $query->whereHas('channelRecord', fn ($q) => $q->where('channel', 'local'));
+        return $query->where('channel', 'local');
     }
 
     public function scopeRemote($query)
     {
-        return $query->whereHas('channelRecord', fn ($q) => $q->where('channel', 'remote'));
+        return $query->where('channel', 'remote');
     }
 
-    public function markAsRemote(): void
-    {
-        $this->channelRecord()->updateOrCreate([], ['channel' => 'remote']);
-    }
-
-    public function markAsLocal(): void
-    {
-        $this->channelRecord()->updateOrCreate([], ['channel' => 'local']);
-    }
 
 }

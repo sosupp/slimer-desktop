@@ -3,6 +3,9 @@ namespace Sosupp\SlimerDesktop\Traits;
 
 use Illuminate\Support\Facades\Log;
 use Sosupp\SlimerDesktop\Events\Remote\UpdateRemoteTable;
+use Sosupp\SlimerDesktop\Jobs\ProcessSyncLogsJob;
+use Sosupp\SlimerDesktop\Services\SyncContext;
+use Sosupp\SlimerDesktop\Services\SyncLogger;
 
 trait SyncWithRemote
 {
@@ -12,25 +15,12 @@ trait SyncWithRemote
 
     public static function bootSyncWithRemote()
     {
-        static::creating(function ($model) {
-            $model->forceFill(['channel' => config('slimerdesktop.app.channel')]);
-        });
-
+        if(config('slimerdestop.syncs.bidirection') === false){
+            return;
+        }
+        
         static::created(function ($model) {
-            // Make 100% sure ID exists
-            if (!$model->getKey()) {
-                $model->refresh();
-            }
-
-            // Perform HasChannel logic first
-            // Add channel to table: Only create if one doesn’t exist
-            if (!$model->channelRecord()->exists()) {
-                $model->channelRecord()->create([
-                    'channel' => config('slimerdesktop.app.channel'),
-                ]);
-            }
-
-            $model->dispatchSync();
+            $model->logSync('created');
         });
 
         // For bi-directional sync this should not be limited to local only
@@ -45,8 +35,34 @@ trait SyncWithRemote
                 $model->channelRecord?->resetSync();
             }
 
-            $model->dispatchSync();
+            $model->logSync('updated');
+            // $model->dispatchSync();
         });
+
+        static::deleted(function ($model) {
+            if ($model->skipSync) return;
+            $model->logSync('deleted');
+        });
+    }
+
+    public function logSync(string $action)
+    {
+        $data = [
+            'model' => get_class($this),
+            'model_id' => $this->getKey(),
+            'uid' => $this->uid ?? null,
+            'action' => $action,
+            'payload' => $this->getAttributes(),
+            'version' => $this->version ?? 1,
+        ];
+
+        if (!SyncContext::isEnabled()) {
+            SyncContext::addToBuffer($data);
+            return;
+        }
+
+        SyncLogger::store($data);
+        ProcessSyncLogsJob::dispatch();
     }
 
     public function dispatchSync()
