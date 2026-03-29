@@ -15,28 +15,17 @@ trait SyncWithRemote
 
     public static function bootSyncWithRemote()
     {
-        if(config('slimerdestop.syncs.bidirection') === false){
-            return;
-        }
-        
+        // Currently only sync if we’re in local mode
+        if (config('slimerdesktop.app.channel') !== 'local') return;
+
         static::created(function ($model) {
             $model->logSync('created');
         });
 
         // For bi-directional sync this should not be limited to local only
         static::updated(function ($model) {
-            // Avoid updates as a result of pivot actions
-            if($model->skipSync){
-                return;
-            }
-
-            // When record changes locally, mark it for re-sync
-            if (config('slimerdesktop.app.channel') === 'local') {
-                $model->channelRecord?->resetSync();
-            }
-
+            if ($model->skipSync) return;
             $model->logSync('updated');
-            // $model->dispatchSync();
         });
 
         static::deleted(function ($model) {

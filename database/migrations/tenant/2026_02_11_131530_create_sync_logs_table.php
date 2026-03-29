@@ -24,12 +24,11 @@ return new class extends Migration
                 $table->integer('attempts')->default(0);
                 $table->text('error')->nullable();
                 $table->timestamp('synced_at')->nullable();
-    
+                $table->timestamps();
+
                 $table->enum('status', [
                     'pending', 'syncing', 'synced', 'failed'
                 ])->default('pending');
-    
-                $table->unique(['model_id', 'model'], 'record_unique');
             });
         }
     }

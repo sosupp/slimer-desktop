@@ -19,12 +19,14 @@ class Sync
             DB::commit();
 
             DB::afterCommit(function () use ($logs, $type) {
-                foreach ($logs as $log) {
-                    $log['transaction_type'] = $type;
-                    SyncLogger::store($log);
-                }
+                if(config('slimerdesktop.app.is_desktop')){
+                    foreach ($logs as $log) {
+                        $log['transaction_type'] = $type;
+                        SyncLogger::store($log);
+                    }
 
-                ProcessSyncLogsJob::dispatch();
+                    ProcessSyncLogsJob::dispatch();
+                }
             });
 
         } catch (\Throwable $e) {
