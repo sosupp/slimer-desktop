@@ -15,18 +15,31 @@ class ProcessSyncLogsJob implements ShouldQueue
 
     public function handle(): void
     {
+        // check for internet connection
+
+        // dd("we will process");
+
         $logs = SyncLog::whereNull('synced_at')->limit(100)->get();
 
         if ($logs->isEmpty()) return;
 
-        $response = Http::post(config('slimerdesktop.api.base'), [
+        $endpoint = config('slimerdesktop.api.base').'v1/desktop/local/push';
+        // $endpoint = config('slimerdesktop.api.base').'v1/desktop/sync/db/push';
+        // $endpoint = config('slimerdesktop.api.base').'v1/desktop/sync/push';
+        $response = Http::withToken(remoteSyncToken())
+        ->post($endpoint, [
             'logs' => $logs->map(fn($log) => $log->toArray())
         ]);
 
         if ($response->successful()) {
             SyncLog::whereIn('id', $logs->pluck('id'))
-            ->update(['synced_at' => now()]);
+            ->update([
+                'synced_at' => now(),
+                'status' => 'synced',
+            ]);
         }
+
+        // dd($response->getStatusCode(), $response->json());
     }
 }
 

@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Sosupp\SlimerDesktop\Http\Controllers\Tenant\TenantAwareController;
 use Sosupp\SlimerTenancy\Models\Landlord\Tenant;
 
@@ -16,17 +17,17 @@ class LocalToRemoteController extends TenantAwareController
     {
         // For non-tenant user of the app
         if(!config('slimertenancy.enabled')){
-            $result = $this->bulkFlow($request);
+            $result = $this->syncAsDB($request);
             return response()->json(['status' => 'ok']);
         }
 
-        $data = $request->all();
+        $data = $request->logs;
         $payload = $data['payload'];
         $model = $data['model'];
-        $table = $model;
+        $table = $data['table'];
 
         // Check for tenant and it should be tenant aware
-        $tenant = Tenant::where('subdomain', $data['tenant'])->first();
+        $tenant = Tenant::where('subdomain', $data['tenant_key'])->first();
 
         if (! $tenant) {
             return response()->json([
@@ -35,11 +36,11 @@ class LocalToRemoteController extends TenantAwareController
         }
 
         $result = $this->inTenant($tenant, function() use($request){
-            $this->bulkFlow($request); 
+            $this->syncAsDB($request);
         });
 
         if($result){
-            Log::info("{$table} record synced", ['id' => $payload['uid']]);
+            Log::info("{$table} record synced", ['uid' => $payload['uid']]);
 
             return response()->json([
                 'message' => "{$table} Record synced successfully",
@@ -54,7 +55,7 @@ class LocalToRemoteController extends TenantAwareController
             'status' => 'sync_failed'
         ], 500);
     }
-    
+
     public function single(Request $request, string $table)
     {
         $data = $request->all();
@@ -83,7 +84,7 @@ class LocalToRemoteController extends TenantAwareController
         }
 
         $result = $this->inTenant($tenant, function() use($table, $payload){
-            $this->updateFlow($table, $payload); 
+            $this->updateFlow($table, $payload);
         });
 
         if($result){
@@ -106,7 +107,9 @@ class LocalToRemoteController extends TenantAwareController
 
     protected function updateFlow(string $table, $payload): string
     {
-        // 1️⃣ Validate that the table exists
+        // remove this method or review this code to reflect using uid as in syncAsDB
+
+            // 1️⃣ Validate that the table exists
             if (!Schema::hasTable($table)) {
                 return response()->json([
                     'message' => "Unknown table: {$table}",
@@ -143,17 +146,18 @@ class LocalToRemoteController extends TenantAwareController
             );
     }
 
-    protected function bulkFlow($request)
+    protected function syncFlow($request)
     {
+        // review this code to reflect using uid as in syncAsDB
         foreach ($request->logs as $log) {
             $modelClass = $log['model'];
 
             if ($log['action'] === 'deleted') {
-                $modelClass::where('uid', $log['uid'])->delete();
+                $modelClass::where('uid', $log['model_uid'])->delete();
                 continue;
             }
 
-            $model = $modelClass::find($log['uid']);
+            $model = $modelClass::find($log['model_uid']);
 
             if (!$model) {
                 $modelClass::create($log['payload']);
@@ -164,6 +168,153 @@ class LocalToRemoteController extends TenantAwareController
                 $model->update($log['payload']);
             }
         }
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    public function syncAsDB(Request $request)
+    {
+        Log::info('sync', [$request->logs]);
+
+        // $allowedTables = ['users', 'orders', 'products']; // adjust
+
+        DB::transaction(function () use ($request) {
+
+            foreach ($request->logs as $log) {
+
+                $table = $log['table'];
+
+                // if (!in_array($table, $allowedTables)) {
+                //     continue;
+                // }
+
+                if ($log['action'] === 'deleted') {
+                    DB::table($table)
+                        ->where('uid', $log['model_uid'])
+                        ->delete();
+                    continue;
+                }
+
+                $model = DB::table($table)
+                    ->where('uid', $log['model_uid'])
+                    ->first();
+
+                $payload = collect($log['payload'])
+                    ->except(['id'])
+                    ->merge([
+                        'uid' => $log['model_uid']
+                    ])
+                    ->toArray();
+
+                // 🔥 Resolve all *_ruid → *_id dynamically
+                try {
+                    // $modelClass = $log['model'];
+                    // $payload = $this->eloquentResolveForeignKeys($payload, $modelClass);
+                    $payload = $this->resolveForeignKeys($payload);
+                } catch (\Exception $e) {
+                    // Option 1: skip and retry later
+                    Log::warning('Sync skipped due to missing dependency', [
+                        'error' => $e->getMessage(),
+                        'log' => $log
+                    ]);
+                    continue;
+                }
+
+                if (!$model) {
+                    DB::table($table)->insert($payload);
+                    continue;
+                }
+
+                // 🔥 Use version if available, fallback to updated_at
+                $incomingVersion = $log['version'] ?? null;
+                $currentVersion = $model->version ?? null;
+
+                if (
+                    ($incomingVersion && $incomingVersion > $currentVersion) ||
+                    (!$incomingVersion && ($log['updated_at'] ?? null) > ($model->updated_at ?? null))
+                ) {
+                    DB::table($table)
+                        ->where('uid', $log['model_uid'])
+                        ->update($payload);
+                }
+            }
+        });
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    protected function resolveForeignKeys(array $data)
+    {
+        foreach ($data as $key => $value) {
+
+            // Detect *_ruid fields
+            if (str_ends_with($key, '_ruid') && !empty($value)) {
+
+                // product_ruid → product
+                $relation = Str::beforeLast($key, '_ruid');
+
+                $currentTable = $data['table'] ?? null;
+                $relatedTable = config("slimerdesktop.syncs.table_relations.$currentTable.$relation")
+                    ?? Str::plural(Str::snake($relation));
+
+                // product → products
+                $relatedTable = Str::plural(Str::snake($relation));
+
+                $record = DB::table($relatedTable)
+                    ->where('uid', $value)
+                    ->first();
+
+                if ($record) {
+                    $data[$relation . '_id'] = $record->id;
+                }
+
+                unset($data[$key]);
+            }
+        }
+
+        return $data;
+    }
+
+    protected function eloquentResolveForeignKeys(array $data, string $modelClass)
+    {
+        $modelInstance = new $modelClass;
+
+        $resolved = [];
+
+        foreach ($data as $key => $value) {
+
+            // Handle *_ruid
+            if (str_ends_with($key, '_ruid') && !empty($value)) {
+
+                $relation = Str::beforeLast($key, '_ruid');
+
+                if (!method_exists($modelInstance, $relation)) {
+                    continue;
+                }
+
+                $relationObj = $modelInstance->$relation();
+                $relatedModel = $relationObj->getRelated();
+                $relatedTable = $relatedModel->getTable();
+
+                $record = DB::table($relatedTable)
+                    ->where('uid', $value)
+                    ->first();
+
+                if ($record) {
+                    $resolved[$relation . '_id'] = $record->id;
+                } else {
+                    Log::warning("Missing dependency: {$relation} ({$value})");
+                }
+
+                // ❌ DO NOT carry forward *_ruid
+                continue;
+            }
+
+            // Keep all other fields
+            $resolved[$key] = $value;
+        }
+
+        return $resolved;
     }
 
 }

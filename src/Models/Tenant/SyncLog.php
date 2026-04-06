@@ -9,7 +9,7 @@ class SyncLog extends Model
     protected $fillable = [
         'model', 'model_id', 'action', 'payload', 'version',
         'transaction_type', 'source', 'synced_at', 'attempts', 'error',
-        'status',
+        'status', 'tenant_key'
     ];
 
     protected $casts = [

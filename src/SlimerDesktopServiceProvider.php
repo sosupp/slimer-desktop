@@ -5,6 +5,7 @@ use Illuminate\Support\ServiceProvider;
 use Sosupp\SlimerDesktop\Console\DesktopBuild;
 use Sosupp\SlimerDesktop\Console\DesktopPrep;
 use Sosupp\SlimerDesktop\Console\DesktopShip;
+use Sosupp\SlimerDesktop\Http\Middleware\VerifyRemoteSyncToken;
 
 class SlimerDesktopServiceProvider extends ServiceProvider
 {
@@ -39,6 +40,10 @@ class SlimerDesktopServiceProvider extends ServiceProvider
 
         // Routes
         $this->loadRoutesFrom(__DIR__. '/../routes/api.php');
+
+        // Middleware
+        $router = $this->app['router'];
+        $router->aliasMiddleware('remote.verify', VerifyRemoteSyncToken::class);
         
     }
 

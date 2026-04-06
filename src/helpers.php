@@ -57,7 +57,7 @@ if (!function_exists('remoteSyncToken')) {
 
         $secret = config('slimerdesktop.jwt.secret');
         $payload = [
-            'iss' => config('services.desktop.jwt.iss'),
+            'iss' => config('slimerdesktop.jwt.iss'),
             'iat' => now()->timestamp,
             'exp' => now()->addHours(12)->timestamp,
             'source' => 'local',

@@ -43,9 +43,11 @@ return [
 
     'commands' => [
         'prep' => [],
+
         'build' => [
             // 'app:desktop-default-data' // just an example command
         ],
+
         'ship' => [
             // 'app:desktop-default-data'
         ]
@@ -58,6 +60,15 @@ return [
      */
     'syncs' => [
         'bidirection' => env('SLIMER_DESKTOP_SYN_BIDIRECTION', false),
+
+        'table_relations' => [
+            // 'product_otpions' => [
+            //     'product_id' => [
+            //         'table' => 'products',
+            //         'column' => 'product_uid',
+            //     ],
+            // ],
+        ],
     ],
 
 ];

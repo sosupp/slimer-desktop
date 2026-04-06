@@ -38,11 +38,12 @@ trait SyncWithRemote
     {
         $data = [
             'model' => get_class($this),
+            'table' => $this->getTable(),
             'model_id' => $this->getKey(),
-            'uid' => $this->uid ?? null,
+            'model_uid' => $this->uid ?? null,
             'action' => $action,
             'payload' => $this->getAttributes(),
-            'version' => $this->version ?? 1,
+            'tenant_key' => config('slimerdesktop.tenant.key'),
         ];
 
         if (!SyncContext::isEnabled()) {

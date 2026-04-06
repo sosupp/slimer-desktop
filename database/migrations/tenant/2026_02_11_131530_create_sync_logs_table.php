@@ -15,8 +15,10 @@ return new class extends Migration
             Schema::create('sync_logs', function (Blueprint $table) {
                 $table->id();
                 $table->string('model');
+                $table->string('table')->nullable();
                 $table->unsignedBigInteger('model_id')->nullable();
                 $table->uuid('model_uid')->nullable();
+                $table->string('tenant_key')->nullable();
                 $table->string('action');
                 $table->json('payload');
                 $table->unsignedInteger('version')->default(1);
