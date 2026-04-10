@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Remote\RemoteDataForLocalController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Sosupp\SlimerDesktop\Http\Controllers\Api\LocalToRemoteController;
@@ -38,6 +39,7 @@ Route::middleware(['remote.verify'])->group(function(){
         ]);
 
         Route::post('local/push', [LocalToRemoteController::class, 'push']);
+        Route::post('local/pull', [RemoteDataForLocalController::class, 'pull']);
 
         Route::post('sync/push', [SyncController::class, 'push']);
         Route::post('sync/db/push', [SyncController::class, 'pushAsDB']);

@@ -19,7 +19,10 @@ class ProcessSyncLogsJob implements ShouldQueue
 
         // dd("we will process");
 
-        $logs = SyncLog::whereNull('synced_at')->limit(100)->get();
+        $logs = SyncLog::whereNull('synced_at')
+        ->where('source', 'local')
+        ->limit(100)
+        ->get();
 
         if ($logs->isEmpty()) return;
 
@@ -28,7 +31,8 @@ class ProcessSyncLogsJob implements ShouldQueue
         // $endpoint = config('slimerdesktop.api.base').'v1/desktop/sync/push';
         $response = Http::withToken(remoteSyncToken())
         ->post($endpoint, [
-            'logs' => $logs->map(fn($log) => $log->toArray())
+            'logs' => $logs->map(fn($log) => $log->toArray()),
+            'tenant' => null,
         ]);
 
         if ($response->successful()) {
@@ -38,8 +42,6 @@ class ProcessSyncLogsJob implements ShouldQueue
                 'status' => 'synced',
             ]);
         }
-
-        // dd($response->getStatusCode(), $response->json());
     }
 }
 
