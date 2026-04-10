@@ -41,8 +41,6 @@ class LocalToRemoteController extends TenantAwareController
         });
 
         if($result){
-            Log::info("{$table} record synced", ['uid' => $payload['uid']]);
-
             return response()->json([
                 'message' => "{$table} Record synced successfully",
                 'uid' => $payload['uid'],
@@ -63,13 +61,6 @@ class LocalToRemoteController extends TenantAwareController
         $payload = $data['payload'];
         $model = $data['model'];
 
-        Log::info("payload", [
-            'tenant' => $data['tenant'],
-            'table' => $table,
-            'model' => $model,
-            'data' => $payload
-        ]);
-
         // For non-tenant user of the app
         if(!config('slimertenancy.enabled')){
             return $this->updateFlow($table, $payload);
@@ -89,8 +80,6 @@ class LocalToRemoteController extends TenantAwareController
         });
 
         if($result){
-            Log::info("{$table} record synced", ['id' => $payload['uid']]);
-
             return response()->json([
                 'message' => "{$table} Record synced successfully",
                 'uid' => $payload['uid'],
@@ -175,7 +164,6 @@ class LocalToRemoteController extends TenantAwareController
 
     public function syncAsDB(Request $request)
     {
-        Log::info('sync', [$request->logs]);
 
         // $allowedTables = ['users', 'orders', 'products']; // adjust
 
@@ -246,8 +234,6 @@ class LocalToRemoteController extends TenantAwareController
 
     public function syncAsDBV2(Request $request)
     {
-        Log::info('sync', [$request->logs]);
-
         DB::transaction(function () use ($request) {
 
             // 🔥 Step 1: Build UID map
@@ -530,13 +516,11 @@ class LocalToRemoteController extends TenantAwareController
             continue;
         }
 
-        Log::info('resolved', [$resolved]);
         return $resolved;
     }
 
     public function syncAsDBV3(Request $request)
     {
-        Log::info('sync V3', [$request->logs]);
 
         DB::transaction(function () use ($request) {
 

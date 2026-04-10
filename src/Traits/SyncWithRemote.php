@@ -60,10 +60,6 @@ trait SyncWithRemote
         // Only sync if we’re in local mode
         if (config('slimerdesktop.app.channel') !== 'local') return;
 
-        Log::info('sync call', [
-            'records' => $this->getAttributes(),
-        ]);
-
         event(new UpdateRemoteTable(
             class_basename($this),
             $this->getTable(),
