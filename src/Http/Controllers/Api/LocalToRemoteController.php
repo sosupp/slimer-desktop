@@ -2,6 +2,7 @@
 
 namespace Sosupp\SlimerDesktop\Http\Controllers\Api;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class LocalToRemoteController extends TenantAwareController
     {
         // For non-tenant user of the app
         if(!config('slimertenancy.enabled')){
-            $result = $this->syncAsDB($request);
+            $result = $this->syncAsDBV3($request);
             return response()->json(['status' => 'ok']);
         }
 
@@ -36,7 +37,7 @@ class LocalToRemoteController extends TenantAwareController
         }
 
         $result = $this->inTenant($tenant, function() use($request){
-            $this->syncAsDB($request);
+            $this->syncAsDBV3($request);
         });
 
         if($result){
@@ -243,6 +244,64 @@ class LocalToRemoteController extends TenantAwareController
         return response()->json(['status' => 'ok']);
     }
 
+    public function syncAsDBV2(Request $request)
+    {
+        Log::info('sync', [$request->logs]);
+
+        DB::transaction(function () use ($request) {
+
+            // 🔥 Step 1: Build UID map
+            $uidMap = $this->buildUidMap($request->logs);
+
+            // 🔥 Step 2: Preload records
+            $records = $this->preloadUidRecords($uidMap);
+
+            foreach ($request->logs as $log) {
+
+                $table = $log['table'];
+                $modelClass = $log['model'];
+
+                if ($log['action'] === 'deleted') {
+                    DB::table($table)
+                        ->where('uid', $log['model_uid'])
+                        ->delete();
+                    continue;
+                }
+
+                $model = DB::table($table)
+                    ->where('uid', $log['model_uid'])
+                    ->first();
+
+                $payload = collect($log['payload'])
+                    ->except(['id'])
+                    ->merge(['uid' => $log['model_uid']])
+                    ->toArray();
+
+                // 🔥 Step 3: Resolve using preloaded data
+                $payload = $this->resolveForeignKeysBulk($payload, $modelClass, $records);
+
+                if (!$model) {
+                    DB::table($table)->insert($payload);
+                    continue;
+                }
+
+                $incomingVersion = $log['version'] ?? null;
+                $currentVersion = $model->version ?? null;
+
+                if (
+                    ($incomingVersion && $incomingVersion > $currentVersion) ||
+                    (!$incomingVersion && ($log['updated_at'] ?? null) > ($model->updated_at ?? null))
+                ) {
+                    DB::table($table)
+                        ->where('uid', $log['model_uid'])
+                        ->update($payload);
+                }
+            }
+        });
+
+        return response()->json(['status' => 'ok']);
+    }
+
     protected function resolveForeignKeys(array $data)
     {
         foreach ($data as $key => $value) {
@@ -312,6 +371,336 @@ class LocalToRemoteController extends TenantAwareController
 
             // Keep all other fields
             $resolved[$key] = $value;
+        }
+
+        return $resolved;
+    }
+
+    protected function buildUidMap(array $logs): array
+    {
+        $uidMap = [];
+
+        foreach ($logs as $log) {
+
+            $modelClass = $log['model'];
+            $payload = $log['payload'] ?? [];
+
+            foreach ($payload as $key => $value) {
+
+                if (!str_ends_with($key, '_ruid') || empty($value)) {
+                    continue;
+                }
+
+                $relation = Str::beforeLast($key, '_ruid');
+
+                $typeKey = $relation . '_type';
+
+                /*
+                |--------------------------------------------------------------------------
+                | 🔥 Polymorphic
+                |--------------------------------------------------------------------------
+                */
+                if (isset($payload[$typeKey])) {
+
+                    $modelType = $payload[$typeKey];
+
+                    $modelClassResolved = Relation::getMorphedModel($modelType)
+                        ?? $modelType;
+
+                    if (!class_exists($modelClassResolved)) {
+                        continue;
+                    }
+
+                    $table = (new $modelClassResolved)->getTable();
+
+                    $uidMap[$table][] = $value;
+
+                    continue;
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | 🔥 Normal (use Eloquent relation)
+                |--------------------------------------------------------------------------
+                */
+                $modelInstance = new $modelClass;
+
+                if (!method_exists($modelInstance, $relation)) {
+                    continue;
+                }
+
+                $relationObj = $modelInstance->$relation();
+                $relatedTable = $relationObj->getRelated()->getTable();
+
+                $uidMap[$relatedTable][] = $value;
+            }
+        }
+
+        // remove duplicates
+        foreach ($uidMap as $table => $uids) {
+            $uidMap[$table] = array_unique($uids);
+        }
+
+        return $uidMap;
+    }
+
+    protected function preloadUidRecords(array $uidMap): array
+    {
+        $records = [];
+
+        foreach ($uidMap as $table => $uids) {
+
+            $rows = DB::table($table)
+                ->whereIn('uid', $uids)
+                ->get()
+                ->keyBy('uid');
+
+            $records[$table] = $rows;
+        }
+
+        return $records;
+    }
+
+    protected function resolveForeignKeysBulk(array $payload, string $modelClass, array $records)
+    {
+        $modelInstance = new $modelClass;
+
+        $resolved = [];
+
+        foreach ($payload as $key => $value) {
+
+            if (!str_ends_with($key, '_ruid') || empty($value)) {
+                $resolved[$key] = $value;
+                continue;
+            }
+
+            $relation = Str::beforeLast($key, '_ruid');
+
+            $typeKey = $relation . '_type';
+
+            /*
+            |--------------------------------------------------------------------------
+            | 🔥 Polymorphic
+            |--------------------------------------------------------------------------
+            */
+            if (isset($payload[$typeKey])) {
+
+                $modelType = $payload[$typeKey];
+
+                $modelClassResolved = Relation::getMorphedModel($modelType)
+                    ?? $modelType;
+
+                if (!class_exists($modelClassResolved)) {
+                    continue;
+                }
+
+                $table = (new $modelClassResolved)->getTable();
+
+                $record = $records[$table][$value] ?? null;
+
+                if ($record) {
+                    $resolved[$relation . '_id'] = $record->id;
+                }
+
+                continue;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 🔥 Normal relation via Eloquent
+            |--------------------------------------------------------------------------
+            */
+            if (method_exists($modelInstance, $relation)) {
+
+                $relationObj = $modelInstance->$relation();
+                $relatedTable = $relationObj->getRelated()->getTable();
+
+                $record = $records[$relatedTable][$value] ?? null;
+
+                if ($record) {
+                    $resolved[$relation . '_id'] = $record->id;
+                }
+
+                continue;
+            }
+
+            // fallback: keep original
+            // $resolved[$key] = $value;
+            Log::warning("Unresolved relation skipped: {$key}");
+            continue;
+        }
+
+        Log::info('resolved', [$resolved]);
+        return $resolved;
+    }
+
+    public function syncAsDBV3(Request $request)
+    {
+        Log::info('sync V3', [$request->logs]);
+
+        DB::transaction(function () use ($request) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | 🔥 STEP 1: Preload existing DB records (UID → ID)
+            |--------------------------------------------------------------------------
+            */
+            $uidMap = $this->buildUidMap($request->logs);
+            $records = $this->preloadUidRecords($uidMap);
+
+            // Normalize to simple array: [table][uid] => id
+            $registry = [];
+
+            foreach ($records as $table => $rows) {
+                foreach ($rows as $uid => $row) {
+                    $registry[$table][$uid] = $row->id;
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 🔥 STEP 2: FIRST PASS (Insert/Update WITHOUT relations)
+            |--------------------------------------------------------------------------
+            */
+            foreach ($request->logs as $log) {
+
+                $table = $log['table'];
+
+                if ($log['action'] === 'deleted') {
+                    DB::table($table)
+                        ->where('uid', $log['model_uid'])
+                        ->delete();
+                    continue;
+                }
+
+                $payload = collect($log['payload'])
+                    ->except(['id'])
+                    ->merge(['uid' => $log['model_uid']])
+                    ->toArray();
+
+                // ❌ Remove all *_ruid before insert
+                $payload = collect($payload)
+                    ->reject(fn ($v, $k) => str_ends_with($k, '_ruid'))
+                    ->toArray();
+
+                DB::table($table)->updateOrInsert(
+                    ['uid' => $log['model_uid']],
+                    $payload
+                );
+
+                // 🔥 Immediately fetch ID and register it
+                $id = DB::table($table)
+                    ->where('uid', $log['model_uid'])
+                    ->value('id');
+
+                $registry[$table][$log['model_uid']] = $id;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 🔥 STEP 3: SECOND PASS (Resolve relations)
+            |--------------------------------------------------------------------------
+            */
+            foreach ($request->logs as $log) {
+
+                if ($log['action'] === 'deleted') {
+                    continue;
+                }
+
+                $table = $log['table'];
+                $modelClass = $log['model'];
+
+                $payload = collect($log['payload'])
+                    ->merge(['uid' => $log['model_uid']])
+                    ->toArray();
+
+                $resolved = $this->resolveForeignKeysFromRegistry(
+                    $payload,
+                    $modelClass,
+                    $registry
+                );
+
+                if (empty($resolved)) {
+                    continue;
+                }
+
+                DB::table($table)
+                    ->where('uid', $log['model_uid'])
+                    ->update($resolved);
+            }
+        });
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    protected function resolveForeignKeysFromRegistry(array $payload, string $modelClass, array $registry)
+    {
+        $modelInstance = new $modelClass;
+
+        $resolved = [];
+
+        foreach ($payload as $key => $value) {
+
+            if (!str_ends_with($key, '_ruid') || empty($value)) {
+                continue;
+            }
+
+            $relation = Str::beforeLast($key, '_ruid');
+            $typeKey = $relation . '_type';
+
+            /*
+            |--------------------------------------------------------------------------
+            | 🔥 POLYMORPHIC
+            |--------------------------------------------------------------------------
+            */
+            if (isset($payload[$typeKey])) {
+
+                $modelType = $payload[$typeKey];
+
+                $modelClassResolved = Relation::getMorphedModel($modelType)
+                    ?? $modelType;
+
+                if (!class_exists($modelClassResolved)) {
+                    continue;
+                }
+
+                $relatedTable = (new $modelClassResolved)->getTable();
+
+                $id = $registry[$relatedTable][$value] ?? null;
+
+                if ($id) {
+                    $resolved[$relation . '_id'] = $id;
+                }
+
+                continue;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 🔥 NORMAL RELATION (Eloquent)
+            |--------------------------------------------------------------------------
+            */
+            if (method_exists($modelInstance, $relation)) {
+
+                $relationObj = $modelInstance->$relation();
+                $relatedTable = $relationObj->getRelated()->getTable();
+
+                $id = $registry[$relatedTable][$value] ?? null;
+
+                if ($id) {
+                    $resolved[$relation . '_id'] = $id;
+                }
+
+                continue;
+            }
+
+            // Optional fallback (safe guess)
+            $relatedTable = Str::plural(Str::snake($relation));
+            $id = $registry[$relatedTable][$value] ?? null;
+
+            if ($id) {
+                $resolved[$relation . '_id'] = $id;
+            }
         }
 
         return $resolved;
