@@ -366,7 +366,6 @@ class LocalToRemoteController extends TenantAwareController
         return $resolved;
     }
 
-
     protected function resolveForeignKeysBulk(array $payload, string $modelClass, array $records)
     {
         $modelInstance = new $modelClass;

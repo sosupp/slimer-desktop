@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\Remote;
+namespace Sosupp\SlimerDesktop\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

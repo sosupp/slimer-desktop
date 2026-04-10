@@ -16,9 +16,7 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
 
     public function handle(): void
     {
-        // check for internet connection
-
-        // dd("we will process");
+        //@todo Get and temp store the ids of logs to be sent back later to remote as synced records
 
         $endpoint = config('slimerdesktop.api.base').'v1/desktop/local/pull';
 
@@ -29,12 +27,14 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
 
         $logs = $response->json('logs');
 
+        $logs = collect($logs)->map(fn ($log) => [
+            ...$log,
+            'payload' => json_decode($log['payload'], true) ?? [],
+        ])->toArray();
+
         if (empty($logs)) {
             return;
         }
-
-        //@todo Get and temp store the ids of logs to be sent back later to remote as synced records
-
 
         $this->syncAsDBV3(new Request([
             'logs' => $logs
