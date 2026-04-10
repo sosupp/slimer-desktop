@@ -28,10 +28,10 @@ class SyncLogger
         $data['payload'] = $payload2;
 
         // dd($data, $payload);
-        Log::info("data", [
-            'data' => $data,
-            'payload' => $data['payload'],
-        ]);
+        // Log::info("data", [
+        //     'data' => $data,
+        //     'payload' => $data['payload'],
+        // ]);
 
         // dd($data, $payload);
 

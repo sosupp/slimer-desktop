@@ -59,7 +59,7 @@ return [
      * @todo Currently does not work bidrection
      */
     'syncs' => [
-        'bidirection' => env('SLIMER_DESKTOP_SYN_BIDIRECTION', false),
+        'bidirection' => env('SLIMER_DESKTOP_SYNC_BIDIRECTION', false),
 
         'table_relations' => [
             // 'product_otpions' => [

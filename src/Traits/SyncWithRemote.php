@@ -16,7 +16,7 @@ trait SyncWithRemote
     public static function bootSyncWithRemote()
     {
         // Currently only sync if we’re in local mode
-        if (config('slimerdesktop.app.channel') !== 'local') return;
+        if (!shouldSync()) return;
 
         static::created(function ($model) {
             $model->logSync('created');
@@ -44,6 +44,7 @@ trait SyncWithRemote
             'action' => $action,
             'payload' => $this->getAttributes(),
             'tenant_key' => config('slimerdesktop.tenant.key'),
+            'source' => config('slimerdesktop.app.channel') ?? 'local'
         ];
 
         if (!SyncContext::isEnabled()) {
@@ -52,13 +53,16 @@ trait SyncWithRemote
         }
 
         SyncLogger::store($data);
-        ProcessSyncLogsJob::dispatch();
+
+        if(config('slimerdesktop.app.is_desktop')){
+            ProcessSyncLogsJob::dispatch();
+        }
     }
 
     public function dispatchSync()
     {
         // Only sync if we’re in local mode
-        if (config('slimerdesktop.app.channel') !== 'local') return;
+        if (!shouldSync()) return;
 
         event(new UpdateRemoteTable(
             class_basename($this),

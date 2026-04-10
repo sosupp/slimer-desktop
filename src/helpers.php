@@ -78,3 +78,11 @@ if (!function_exists('cleanTenantName')) {
         return Str::lower($cleaned);
     }
 }
+
+if (!function_exists('shouldSync')) {
+    function shouldSync(): bool
+    {
+        return config('slimerdesktop.syncs.bidirection') === true || 
+            config('slimerdesktop.app.channel') === 'local';
+    }
+}
