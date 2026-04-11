@@ -55,7 +55,10 @@ class RemoteDataForLocalController extends TenantAwareController
         // for now we immediately mark the selected logs as synced
         DB::table('sync_logs')
         ->whereIn('id', $logs->pluck('id'))
-        ->update(['synced_at' => now()]);
+        ->update([
+            'synced_at' => now(),
+            'status' => 'synced'
+        ]);
 
         return response()->json([
             'logs' => $logs
