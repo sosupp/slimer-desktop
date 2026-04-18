@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 trait WithSyncDBOperation
 {
@@ -21,6 +22,8 @@ trait WithSyncDBOperation
             */
             $uidMap = $this->buildUidMap($request->logs);
             $records = $this->preloadUidRecords($uidMap);
+            
+            Log::info('before', [$uidMap, $records]);
 
             // Normalize to simple array: [table][uid] => id
             $registry = [];
@@ -30,6 +33,8 @@ trait WithSyncDBOperation
                     $registry[$table][$uid] = $row->id;
                 }
             }
+            
+            Log::info('registry', [$registry]);
 
             /*
             |--------------------------------------------------------------------------
@@ -188,6 +193,7 @@ trait WithSyncDBOperation
 
             $records[$table] = $rows;
         }
+        
 
         return $records;
     }
@@ -262,6 +268,11 @@ trait WithSyncDBOperation
             }
         }
 
+        Log::info('resolver', [
+            'payload' => $payload,
+            'resolved' => $resolved,
+        ]);
+        
         return $resolved;
     }
 }
