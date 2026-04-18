@@ -1,0 +1,153 @@
+<?php
+
+namespace Sosupp\SlimerDesktop\Models\Tenant;
+
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Sosupp\SlimerDesktop\Services\Sync;
+
+class SyncableBelongsToMany extends BelongsToMany
+{
+    protected function logPivot($ids, array $attributes = [], string $action = 'attached')
+    {
+        // dd((array)$ids, $attributes);
+
+        foreach ((array) $ids as $id) {
+
+            $parent = $this->getParent();
+            $related = $this->getRelated();
+
+            // $payload = array_merge($attributes, [
+            //     $this->getForeignPivotKeyName() => $parent->id,
+            //     $this->getRelatedPivotKeyName() => $id,
+            // ]);
+
+            $payload = array_merge($attributes, [
+                Str::replace('_id', '_ruid', $this->getForeignPivotKeyName()) => $parent->uid,
+                Str::replace('_id', '_ruid', $this->getRelatedPivotKeyName()) =>
+                    $related->find($id)?->uid,
+            ]);
+
+            Sync::pivot($this->getPivotClass(), [
+                'table' => $this->getTable(),
+                'model_id' => null,
+                'model_uid' => (string) Str::uuid(),
+                'action' => $action,
+                'payload' => $payload,
+                'tenant_key' => config('slimerdesktop.tenant.key'),
+                'source' => config('slimerdesktop.app.channel') ?? 'local'
+            ]);
+        }
+    }
+
+    public function attach($ids, array $attributes = [], $touch = true)
+    {
+        foreach ((array) $ids as $singleId) {
+            $attributes['uid'] = $attributes['uid'] ?? (string) Str::uuid();
+
+            parent::attach($singleId, $attributes, $touch);
+
+            $this->logPivot($singleId, $attributes, 'attached');
+        }
+    }
+
+    public function detach($ids = null, $touch = true)
+    {
+        parent::detach($ids, $touch);
+
+        foreach ((array) $ids as $id) {
+            // handle pivot deletion as softdeletes
+            $pivot = DB::table($this->getTable())
+            ->where($this->getForeignPivotKeyName(), $this->getParent()->id)
+            ->where($this->getRelatedPivotKeyName(), $id)
+            ->first();
+
+            if (!$pivot) {
+                continue;
+            }
+
+            // 🔥 Soft delete instead
+            DB::table($this->getTable())
+            ->where('id', $pivot->id)
+            ->update([
+                'deleted_at' => now()
+            ]);
+
+            Sync::pivot($this->getPivotClass(), [
+                'table' => $this->getTable(),
+                'model_uid' => null,
+                'action' => 'detached',
+                'payload' => [
+                    $this->getForeignPivotKeyName() => $this->getParent()->id,
+                    $this->getRelatedPivotKeyName() => $id,
+                ],
+                'tenant_key' => config('slimerdesktop.tenant.key'),
+                'source' => config('slimerdesktop.app.channel') ?? 'local'
+            ]);
+        }
+    }
+
+    public function sync($ids, $detaching = true)
+    {
+
+        if(!is_array($ids)){
+            $ids = collect($ids);
+        }
+
+        // dd($ids, $detaching, $this->getPivotClass());
+
+        $normalized = [];
+
+        foreach ($ids as $key => $value) {
+            if (is_array($value)) {
+                $normalized[$key] = array_merge($value, [
+                    'uid' => $value['uid'] ?? (string) Str::uuid()
+                ]);
+            } else {
+                $normalized[$value] = [
+                    'uid' => (string) Str::uuid()
+                ];
+            }
+        }
+
+
+
+        $changes = parent::sync($normalized, $detaching);
+
+        // dd($normalized, $changes, $this->getPivotClass());
+
+        if (!empty($changes['attached'])) {
+            $this->logPivot($changes['attached'], [], 'attached');
+        }
+
+        if (!empty($changes['updated'])) {
+            $this->logPivot($changes['updated'], [], 'updated');
+        }
+
+        if (!empty($changes['detached'])) {
+            foreach ($changes['detached'] as $id) {
+                Sync::pivot($this->getPivotClass(), [
+                    'table' => $this->getTable(),
+                    'action' => 'detached',
+                    'payload' => [
+                        $this->getForeignPivotKeyName() => $this->getParent()->id,
+                        $this->getRelatedPivotKeyName() => $id,
+                    ],
+                    'tenant_key' => config('slimerdesktop.tenant.key'),
+                    'source' => config('slimerdesktop.app.channel') ?? 'local'
+                ]);
+            }
+        }
+
+        return $changes;
+    }
+
+    public function updateExistingPivot($id, array $attributes, $touch = true)
+    {
+        parent::updateExistingPivot($id, $attributes, $touch);
+        $this->logPivot($id, $attributes, 'updated');
+    }
+
+
+}
