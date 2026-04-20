@@ -69,7 +69,13 @@ class DesktopShip extends Command
             // run user provided commands
             $this->runUserCommands();
 
+            $this->call('config:clear');
+            $this->call('cache:clear');
 
+            $this->call('config:cache');
+
+            $this->info('Next App Version will be: '. $tagVersion);
+            
             $forOs = $this->option('os');
             $this->nativePublish($forOs);
 
