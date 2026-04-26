@@ -25,7 +25,7 @@ class VerifyRemoteSyncToken
         }
 
         try {
-            $payload = JWT::decode($token, new Key(config('services.desktop.api.secret'), 'HS256'));
+            $payload = JWT::decode($token, new Key(config('slimerdesktop.jwt.secret'), 'HS256'));
 
             // Additional checks, if needed
             if ($payload->iss !== config('slimerdesktop.jwt.iss')) {
