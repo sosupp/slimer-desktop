@@ -34,7 +34,7 @@ class DesktopPrep extends Command
         updateEnv(key: 'SLIMER_DESKTOP_APP_ROLE', value: null);
         updateEnv(key: 'SLIMER_DESKTOP_API_BASE', value: null, override: false);
         updateEnv(key: 'SLIMER_DESKTOP_API_TOKEN', value: null, override: false);
-        updateEnv(key: 'SLIMER_JWT_SECRET', value: null, override: false);
+        updateEnv(key: 'SLIMER_JWT_KEY', value: null, override: false);
         updateEnv(key: 'SLIMER_JWT_ISS', value: null, override: false);
 
         updateEnv(key: 'SLIMER_DESKTOP_TENANT_KEY', value: null, override: false);

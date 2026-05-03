@@ -26,7 +26,7 @@ return [
     ],
 
     'jwt' => [
-        'secret' => env('SLIMER_JWT_SECRET'),
+        'secret' => env('SLIMER_JWT_KEY'),
         'iss' => env('SLIMER_JWT_ISS'),
     ],
 
