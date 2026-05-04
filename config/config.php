@@ -10,6 +10,10 @@ return [
         'role' => env('SLIMER_DESKTOP_APP_ROLE'),
         'setup' => env('SLIMER_DESKTOP_SETUP'),
         'is_desktop' => env('SLIMER_IS_DESKTOP'),
+        'device_uid' => env('SLIMER_DESKTOP_DEVICE_UID'),
+        'device_name' => env('SLIMER_DESKTOP_DEVICE_NAME'),
+        'branch_uid' => env('SLIMER_DESKTOP_BRANCH_UID'),
+        'platform' => env('SLIMER_DESKTOP_PLATFORM', 'pc'),
     ],
 
     'release' => [

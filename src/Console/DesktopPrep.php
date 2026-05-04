@@ -37,6 +37,11 @@ class DesktopPrep extends Command
         updateEnv(key: 'SLIMER_JWT_KEY', value: null, override: false);
         updateEnv(key: 'SLIMER_JWT_ISS', value: null, override: false);
 
+        updateEnv(key: 'SLIMER_DESKTOP_DEVICE_UID', value: null, override: false);
+        updateEnv(key: 'SLIMER_DESKTOP_DEVICE_NAME', value: null, override: false);
+        updateEnv(key: 'SLIMER_DESKTOP_BRANCH_UID', value: null, override: false);
+        updateEnv(key: 'SLIMER_DESKTOP_PLATFORM', value: null, override: false);
+
         updateEnv(key: 'SLIMER_DESKTOP_TENANT_KEY', value: null, override: false);
 
         updateEnv(key: 'NATIVEPHP_APP_VERSION', value: null, override: false);

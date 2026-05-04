@@ -39,6 +39,8 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
             $this->syncAsDBV3(new Request([
                 'logs' => $logs
             ]));
+
+            // after local sync success send ack to remote
         }
 
 

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Sosupp\SlimerDesktop\Http\Controllers\Api\Traits\WithSyncDBOperation;
 use Sosupp\SlimerDesktop\Http\Controllers\Tenant\TenantAwareController;
+use Sosupp\SlimerDesktop\Models\Tenant\DeviceSyncCursor;
+use Sosupp\SlimerDesktop\Models\Tenant\SyncDevice;
 use Sosupp\SlimerTenancy\Models\Landlord\Tenant;
 
 class LocalToRemoteController extends TenantAwareController
@@ -56,6 +58,31 @@ class LocalToRemoteController extends TenantAwareController
             'message' => "{$table} record failed to sync",
             'uid' => $payload['uid'],
             'status' => 'sync_failed'
+        ], 500);
+    }
+
+    public function registerDevice(Request $request)
+    {
+        $device = SyncDevice::query()->firstOrCreate(
+            ['uid' => $request->uid],
+            [
+                'branch_id' => $request->branch_id,
+                'branch_uid' => $request->branch_id,
+                'name' => $request->name,
+                'platform' => $request->platform,
+            ]
+        );
+
+        if($device){
+            DeviceSyncCursor::firstOrCreate([
+                'sync_device_id' => $device->id,
+            ]);
+
+            return response()->json($device);
+        }
+
+        return response()->json([
+            'message' => 'device not registered'
         ], 500);
     }
 
@@ -437,6 +464,8 @@ class LocalToRemoteController extends TenantAwareController
 
         return $resolved;
     }
+
+
 
 
 }

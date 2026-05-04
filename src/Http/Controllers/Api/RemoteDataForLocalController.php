@@ -5,6 +5,8 @@ namespace Sosupp\SlimerDesktop\Http\Controllers\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Sosupp\SlimerDesktop\Http\Controllers\Tenant\TenantAwareController;
+use Sosupp\SlimerDesktop\Models\Tenant\SyncDevice;
+use Sosupp\SlimerDesktop\Models\Tenant\SyncLog;
 use Sosupp\SlimerTenancy\Models\Landlord\Tenant;
 
 class RemoteDataForLocalController extends TenantAwareController
@@ -42,6 +44,20 @@ class RemoteDataForLocalController extends TenantAwareController
         ], 500);
     }
 
+    public function acknowledge(Request $request)
+    {
+        $device = SyncDevice::where('uid', $request->device_uid)->firstOrFail();
+
+        $device->cursor()->update([
+            'last_synced_log_id' => $request->last_processed_log_id,
+            'last_synced_at' => now()
+        ]);
+
+        return response()->json([
+            'message' => 'sync acknowledged'
+        ]);
+    }
+
     protected function getSyncRecords()
     {
         $logs = DB::table('sync_logs')
@@ -59,6 +75,29 @@ class RemoteDataForLocalController extends TenantAwareController
             'synced_at' => now(),
             'status' => 'synced'
         ]);
+
+        return response()->json([
+            'logs' => $logs
+        ]);
+
+    }
+
+    protected function getSyncRecordsV2(Request $request)
+    {
+        $device = SyncDevice::query()->where('uid', $request->device_uid)
+        ->firstOrFail();
+
+        $cursor = $device->cursor;
+
+        $logs = SyncLog::query()
+        ->where('id', '>', $cursor->last_synced_log_id)
+        ->where(function ($query) use ($device) {
+            $query->whereNull('origin_device_id')
+            ->orWhere('origin_device_id', '!=', $device->id);
+        })
+        ->orderBy('id')
+        ->limit(200)
+        ->get();
 
         return response()->json([
             'logs' => $logs

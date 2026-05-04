@@ -44,7 +44,10 @@ trait SyncWithRemote
             'action' => $action,
             'payload' => $this->getAttributes(),
             'tenant_key' => config('slimerdesktop.tenant.key'),
-            'source' => config('slimerdesktop.app.channel') ?? 'local'
+            'source' => config('slimerdesktop.app.channel') ?? 'local',
+
+            'origin_branch_uid' => config('slimerdesktop.app.branch_uid') ?? null,
+            'origin_device_uid' => config('slimerdesktop.app.device_uid') ?? null,
         ];
 
         if (!SyncContext::isEnabled()) {
