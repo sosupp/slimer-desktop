@@ -26,23 +26,23 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
                 'device_uid' => config('slimerdesktop.app.device_uid'),
             ]);
     
-            $logs = $response->json('logs');
+            // $logs = $response->json('logs');
     
-            $logs = collect($logs)->map(fn ($log) => [
-                ...$log,
-                // Check if it's already an array; if not, decode the string
-                'payload' => is_array($log['payload']) 
-                    ? $log['payload'] 
-                    : (json_decode($log['payload'], true) ?? []),
-            ])->toArray();
+            // $logs = collect($logs)->map(fn ($log) => [
+            //     ...$log,
+            //     // Check if it's already an array; if not, decode the string
+            //     'payload' => is_array($log['payload']) 
+            //         ? $log['payload'] 
+            //         : (json_decode($log['payload'], true) ?? []),
+            // ])->toArray();
     
-            if (empty($logs)) {
-                return;
-            }
+            // if (empty($logs)) {
+            //     return;
+            // }
     
-            $this->syncAsDBV3(new Request([
-                'logs' => $logs
-            ]));
+            // $this->syncAsDBV3(new Request([
+            //     'logs' => $logs
+            // ]));
 
             $logs = collect($response->json('logs'))
             ->map(fn ($log) => [
