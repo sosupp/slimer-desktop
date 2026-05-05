@@ -33,12 +33,10 @@ class DesktopBuild extends Command
         // run user provided commands
         $commands = config('slimerdesktop.commands.build');
 
-        if(empty($commands)){
-            return;
-        }
-
-        foreach ($commands as $command) {
-            $this->call($command);
+        if(!empty($commands)){
+            foreach ($commands as $command) {
+                $this->call($command);
+            }
         }
 
         $this->call('native:run');

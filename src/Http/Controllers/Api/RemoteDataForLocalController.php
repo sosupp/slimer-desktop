@@ -15,7 +15,7 @@ class RemoteDataForLocalController extends TenantAwareController
     {
         // For non-tenant user of the app
         if(!config('slimertenancy.enabled')){
-            return $this->getSyncRecords();
+            return $this->getSyncRecordsV2($request);
         }
 
         $data = $request->logs;
@@ -31,7 +31,7 @@ class RemoteDataForLocalController extends TenantAwareController
         }
 
         $result = $this->inTenant($tenant, function() use($request){
-            return $this->getSyncRecords();
+            return $this->getSyncRecordsV2($request);
         });
 
         if($result){
@@ -102,7 +102,6 @@ class RemoteDataForLocalController extends TenantAwareController
         return response()->json([
             'logs' => $logs
         ]);
-
     }
 
 }

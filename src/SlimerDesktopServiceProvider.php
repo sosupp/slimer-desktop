@@ -3,6 +3,7 @@ namespace Sosupp\SlimerDesktop;
 
 use Illuminate\Support\ServiceProvider;
 use Sosupp\SlimerDesktop\Console\DesktopBuild;
+use Sosupp\SlimerDesktop\Console\DesktopInstall;
 use Sosupp\SlimerDesktop\Console\DesktopPrep;
 use Sosupp\SlimerDesktop\Console\DesktopShip;
 use Sosupp\SlimerDesktop\Http\Middleware\VerifyRemoteSyncToken;
@@ -30,8 +31,11 @@ class SlimerDesktopServiceProvider extends ServiceProvider
                 __DIR__.'/../config/config.php' => config_path('slimerdesktop.php'),
             ], 'slimer-desktop-config');
 
+
+            $path = config('slimertenancy.enabled') ? 'migrations/tenant' : 'migrations';
+
             $this->publishes([
-                __DIR__.'/../database/migrations' => database_path('migrations'),
+                __DIR__.'/../database/migrations' => database_path($path),
             ], 'slimer-desktop-migrations');
 
             // Commands
@@ -53,6 +57,7 @@ class SlimerDesktopServiceProvider extends ServiceProvider
             DesktopBuild::class,
             DesktopShip::class,
             DesktopPrep::class,
+            DesktopInstall::class,
         ]);
     }
 

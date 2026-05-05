@@ -14,6 +14,12 @@ Route::get('/user', function (Request $request) {
 
 
 // using bearer token
+Route::get('api/v1/desktop/test', function(){
+    return response()->json([
+        'status' => 'ok'
+    ]);
+});
+
 Route::middleware(['remote.verify'])->group(function(){
     Route::prefix('api/v1/desktop')->group(function(){
         // Validate if the tenant unique subdomain exist

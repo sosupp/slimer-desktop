@@ -63,6 +63,29 @@ class LocalToRemoteController extends TenantAwareController
 
     public function registerDevice(Request $request)
     {
+        if(!config('slimertenancy.enabled')){
+            return $this->processDevice($request);
+        }
+
+        $tenantKey = $request->tenant;
+
+        // Check for tenant and it should be tenant aware
+        $tenant = Tenant::where('subdomain', $tenantKey)->first();
+
+        if (! $tenant) {
+            return response()->json([
+                'status' => 'tenant_not_found'
+            ], 404);
+        }
+
+        return $this->inTenant($tenant, function() use($request){
+            return $this->processDevice($request);
+        });
+        
+    }
+
+    protected function processDevice(Request $request)
+    {
         $device = SyncDevice::query()->firstOrCreate(
             ['uid' => $request->uid],
             [
@@ -70,12 +93,15 @@ class LocalToRemoteController extends TenantAwareController
                 'branch_uid' => $request->branch_id,
                 'name' => $request->name,
                 'platform' => $request->platform,
+                'last_seen_at' => now(),
             ]
         );
 
         if($device){
             DeviceSyncCursor::firstOrCreate([
                 'sync_device_id' => $device->id,
+                'sync_device_uid' => $device->uid,
+                'last_seen_at' => now(),
             ]);
 
             return response()->json($device);
