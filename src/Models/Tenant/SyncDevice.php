@@ -14,4 +14,15 @@ class SyncDevice extends Model
         'branch_id', 'uid', 'name', 'platform',
         'last_seen_at', 'is_active',
     ];
+
+    // relationships
+    // public function branch()
+    // {
+    //     return $this->belongsTo(Branch::class);
+    // }
+
+    public function cursor()
+    {
+        return $this->hasOne(DeviceSyncCursor::class);
+    }
 }

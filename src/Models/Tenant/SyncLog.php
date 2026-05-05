@@ -10,7 +10,7 @@ class SyncLog extends Model
         'model', 'model_id', 'action', 'payload', 'version',
         'transaction_type', 'source', 'synced_at', 'attempts', 'error',
         'status', 'tenant_key', 'model_uid', 'table', 'origin_branch_uid',
-        'origin_device_uid',
+        'origin_device_uid', 'origin_device_id', 'origin_branch_id'
     ];
 
     protected $casts = [

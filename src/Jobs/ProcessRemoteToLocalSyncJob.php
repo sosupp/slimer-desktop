@@ -23,13 +23,17 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
             $response = Http::withToken(remoteSyncToken())
             ->get($endpoint, [
                 'tenant' => null,
+                'device_uid' => config('slimerdesktop.app.device_uid'),
             ]);
     
             $logs = $response->json('logs');
     
             $logs = collect($logs)->map(fn ($log) => [
                 ...$log,
-                'payload' => json_decode($log['payload'], true) ?? [],
+                // Check if it's already an array; if not, decode the string
+                'payload' => is_array($log['payload']) 
+                    ? $log['payload'] 
+                    : (json_decode($log['payload'], true) ?? []),
             ])->toArray();
     
             if (empty($logs)) {

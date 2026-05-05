@@ -4,6 +4,7 @@ namespace Sosupp\SlimerDesktop\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Sosupp\SlimerDesktop\Http\Controllers\Tenant\TenantAwareController;
 use Sosupp\SlimerDesktop\Models\Tenant\SyncDevice;
 use Sosupp\SlimerDesktop\Models\Tenant\SyncLog;
@@ -84,6 +85,12 @@ class RemoteDataForLocalController extends TenantAwareController
 
     protected function getSyncRecordsV2(Request $request)
     {
+        Log::info('local device uid', [$request->device_uid, $request['device_uid']]);
+
+        if (!$request->has('device_uid')) {
+            return response()->json(['logs' => []]);
+        }
+        
         $device = SyncDevice::query()->where('uid', $request->device_uid)
         ->firstOrFail();
 
