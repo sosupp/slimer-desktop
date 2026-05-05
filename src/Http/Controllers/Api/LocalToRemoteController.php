@@ -101,7 +101,6 @@ class LocalToRemoteController extends TenantAwareController
             DeviceSyncCursor::firstOrCreate([
                 'sync_device_id' => $device->id,
                 'sync_device_uid' => $device->uid,
-                'last_seen_at' => now(),
             ]);
 
             return response()->json($device);

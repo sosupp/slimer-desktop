@@ -44,7 +44,35 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
                 'logs' => $logs
             ]));
 
+            $logs = collect($response->json('logs'))
+            ->map(fn ($log) => [
+                ...$log,
+                // Check if it's already an array; if not, decode the string
+                'payload' => is_array($log['payload']) 
+                    ? $log['payload'] 
+                    : (json_decode($log['payload'], true) ?? []),
+            ]);
+
+            if ($logs->isEmpty()) {
+                return;
+            }
+
+            $this->syncAsDBV3(new Request([
+                'logs' => $logs->toArray()
+            ]));
+
             // after local sync success send ack to remote
+            $lastProcessedLogId = $logs->last()['id'];
+
+            Http::withToken(remoteSyncToken())
+            ->post(
+                config('slimerdesktop.api.base') . "v1/desktop/local/ack/remote",
+                [
+                    'tenant' => null,
+                    'device_uid' => config('slimerdesktop.app.device_uid'),
+                    'last_processed_log_id' => $lastProcessedLogId,
+                ]
+            );
         }
 
 
