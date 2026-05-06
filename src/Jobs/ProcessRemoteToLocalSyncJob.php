@@ -8,6 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Request;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Sosupp\SlimerDesktop\Http\Controllers\Api\Traits\WithSyncDBOperation;
 
 class ProcessRemoteToLocalSyncJob implements ShouldQueue
@@ -19,41 +20,26 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
         //@todo Get and temp store the ids of logs to be sent back later to remote as synced records
         if(config('slimerdesktop.app.is_desktop')){
             $endpoint = config('slimerdesktop.api.base').'v1/desktop/local/pull';
-    
-            $response = Http::withToken(remoteSyncToken())
+
+            $response = Http::timeout(180)
+            ->retry(3)
+            ->withToken(remoteSyncToken())
             ->get($endpoint, [
                 'tenant' => null,
                 'device_uid' => config('slimerdesktop.app.device_uid'),
             ]);
-    
-            // $logs = $response->json('logs');
-    
-            // $logs = collect($logs)->map(fn ($log) => [
-            //     ...$log,
-            //     // Check if it's already an array; if not, decode the string
-            //     'payload' => is_array($log['payload']) 
-            //         ? $log['payload'] 
-            //         : (json_decode($log['payload'], true) ?? []),
-            // ])->toArray();
-    
-            // if (empty($logs)) {
-            //     return;
-            // }
-    
-            // $this->syncAsDBV3(new Request([
-            //     'logs' => $logs
-            // ]));
 
             $logs = collect($response->json('logs'))
             ->map(fn ($log) => [
                 ...$log,
                 // Check if it's already an array; if not, decode the string
-                'payload' => is_array($log['payload']) 
-                    ? $log['payload'] 
+                'payload' => is_array($log['payload'])
+                    ? $log['payload']
                     : (json_decode($log['payload'], true) ?? []),
             ]);
 
             if ($logs->isEmpty()) {
+                Log::info("log from remote is empty");
                 return;
             }
 
@@ -64,7 +50,11 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
             // after local sync success send ack to remote
             $lastProcessedLogId = $logs->last()['id'];
 
-            Http::withToken(remoteSyncToken())
+            Log::info("last id", [$lastProcessedLogId]);
+
+            $response = Http::withToken(remoteSyncToken())
+            ->timeout(180)
+            ->retry(2)
             ->post(
                 config('slimerdesktop.api.base') . "v1/desktop/local/ack/remote",
                 [
@@ -73,6 +63,8 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
                     'last_processed_log_id' => $lastProcessedLogId,
                 ]
             );
+
+            Log::info('ack res', [$response->getStatusCode(), $response->body()]);
         }
 
 

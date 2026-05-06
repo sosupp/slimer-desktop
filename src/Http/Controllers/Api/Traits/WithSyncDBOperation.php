@@ -23,8 +23,6 @@ trait WithSyncDBOperation
             $uidMap = $this->buildUidMap($request->logs);
             $records = $this->preloadUidRecords($uidMap);
 
-            Log::info('before', [$uidMap, $records]);
-
             // Normalize to simple array: [table][uid] => id
             $registry = [];
 
@@ -33,8 +31,6 @@ trait WithSyncDBOperation
                     $registry[$table][$uid] = $row->id;
                 }
             }
-
-            Log::info('registry', [$registry]);
 
             /*
             |--------------------------------------------------------------------------
@@ -75,13 +71,13 @@ trait WithSyncDBOperation
 
                                 $payload[$dbColumn] = $uids[$value];
 
-                                Log::info('registry lookup', [
-                                    'target table' => $targetTable,
-                                    'uids' => $uids,
-                                    'uid value' => $uids[$value],
-                                    'db col' => $dbColumn,
-                                    'payload' => $payload
-                                ]);
+                                // Log::info('registry lookup', [
+                                //     'target table' => $targetTable,
+                                //     'uids' => $uids,
+                                //     'uid value' => $uids[$value],
+                                //     'db col' => $dbColumn,
+                                //     'payload' => $payload
+                                // ]);
                                 break;
                             }
                         }
@@ -93,11 +89,11 @@ trait WithSyncDBOperation
                     ->reject(fn ($v, $k) => str_ends_with($k, '_ruid'))
                     ->toArray();
 
-                Log::info('before insert', [
-                    'payload' => $payload,
-                    'clean payload' => $cleanPayload,
-                    'the log' => $log,
-                ]);
+                // Log::info('before insert', [
+                //     'payload' => $payload,
+                //     'clean payload' => $cleanPayload,
+                //     'the log' => $log,
+                // ]);
 
                 DB::table($table)->updateOrInsert(
                     ['uid' => $log['model_uid']],
@@ -150,7 +146,7 @@ trait WithSyncDBOperation
     {
         $uidMap = [];
 
-        Log::info('before uidmap', [$logs]);
+        // Log::info('before uidmap', [$logs]);
 
         foreach ($logs as $log) {
 
@@ -159,7 +155,7 @@ trait WithSyncDBOperation
 
             foreach ($payload as $key => $value) {
 
-                Log::info('check', [$key, $value]);
+                // Log::info('check', [$key, $value]);
 
                 if (!str_ends_with($key, '_ruid') || empty($value)) {
                     continue;
@@ -177,7 +173,7 @@ trait WithSyncDBOperation
 
                 $typeKey = Str::snake($relation) . '_type';
 
-                Log::info('relation and type key', [$relation, $typeKey]);
+                // Log::info('relation and type key', [$relation, $typeKey]);
 
                 /*
                 |--------------------------------------------------------------------------
@@ -186,7 +182,7 @@ trait WithSyncDBOperation
                 */
                 if (isset($payload[$typeKey])) {
 
-                    Log::info('yes type key', [$payload[$typeKey]]);
+                    // Log::info('yes type key', [$payload[$typeKey]]);
 
                     $modelType = $payload[$typeKey];
 
@@ -201,7 +197,7 @@ trait WithSyncDBOperation
 
                     $uidMap[$table][] = $value;
 
-                    Log::info('has uid', [$uidMap]);
+                    // Log::info('has uid', [$uidMap]);
 
                     continue;
                 }
@@ -213,12 +209,12 @@ trait WithSyncDBOperation
                 */
                 $modelInstance = new $modelClass;
 
-                Log::info('use eloquent rel', [$modelInstance]);
+                // Log::info('use eloquent rel', [$modelInstance]);
 
                 // $relation = 'platformAdmins';
 
                 if (!method_exists($modelInstance, $relation)) {
-                    Log::info('model rel method not', [$modelInstance]);
+                    // Log::info('model rel method not', [$modelInstance]);
                     continue;
                 }
 
@@ -227,7 +223,7 @@ trait WithSyncDBOperation
 
                 $uidMap[$relatedTable][] = $value;
 
-                Log::info('uid after el', [$relationObj, $relatedTable, $uidMap]);
+                // Log::info('uid after el', [$relationObj, $relatedTable, $uidMap]);
             }
         }
 
@@ -236,7 +232,7 @@ trait WithSyncDBOperation
             $uidMap[$table] = array_unique($uids);
         }
 
-        Log::info('after uidmap', $uidMap);
+        // Log::info('after uidmap', $uidMap);
 
         return $uidMap;
     }
@@ -246,7 +242,7 @@ trait WithSyncDBOperation
         $records = [];
 
         foreach ($uidMap as $table => $uids) {
-            Log::info('table n uid', [$table, $uids]);
+            // Log::info('table n uid', [$table, $uids]);
 
             $rows = DB::table($table)
                 ->whereIn('uid', $uids)
@@ -264,7 +260,7 @@ trait WithSyncDBOperation
     {
         $modelInstance = new $modelClass;
 
-        Log::info('mode instance', [$modelInstance]);
+        // Log::info('mode instance', [$modelInstance]);
 
         $resolved = [];
 
@@ -310,7 +306,7 @@ trait WithSyncDBOperation
             |--------------------------------------------------------------------------
             */
             if (method_exists($modelInstance, $relation)) {
-                Log::info('mo exist', [$modelInstance, $relation]);
+                // Log::info('mo exist', [$modelInstance, $relation]);
 
                 $relationObj = $modelInstance->$relation();
                 $relatedTable = $relationObj->getRelated()->getTable();
@@ -333,10 +329,10 @@ trait WithSyncDBOperation
             }
         }
 
-        Log::info('resolver', [
-            'payload' => $payload,
-            'resolved' => $resolved,
-        ]);
+        // Log::info('resolver', [
+        //     'payload' => $payload,
+        //     'resolved' => $resolved,
+        // ]);
 
         return $resolved;
     }

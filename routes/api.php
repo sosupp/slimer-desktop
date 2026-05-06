@@ -48,7 +48,7 @@ Route::middleware(['remote.verify'])->group(function(){
         Route::post('register/device', [LocalToRemoteController::class, 'registerDevice']);
 
         Route::get('local/pull', [RemoteDataForLocalController::class, 'pull']);
-        Route::get('local/ack/remote', [RemoteDataForLocalController::class, 'acknowledge']);
+        Route::post('local/ack/remote', [RemoteDataForLocalController::class, 'acknowledge']);
 
         Route::post('sync/push', [SyncController::class, 'push']);
         Route::post('sync/db/push', [SyncController::class, 'pushAsDB']);
