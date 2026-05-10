@@ -12,7 +12,12 @@ class SyncDevice extends Model
 
     protected $fillable = [
         'branch_id', 'uid', 'name', 'platform',
-        'last_seen_at', 'is_active',
+        'last_seen_at', 'is_active', 'data',
+        'branch_uid',
+    ];
+
+    protected $casts = [
+        'data' => 'array'
     ];
 
     // relationships

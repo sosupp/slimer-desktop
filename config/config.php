@@ -16,6 +16,10 @@ return [
         'platform' => env('SLIMER_DESKTOP_PLATFORM', 'pc'),
     ],
 
+    'models' => [
+        'branch' => App\Models\Branch::class,
+    ],
+
     'release' => [
         'github' => [
             'owner' => env('GITHUB_OWNER'),

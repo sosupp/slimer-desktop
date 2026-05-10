@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Native\Desktop\Facades\Settings;
 use Sosupp\SlimerDesktop\Http\Controllers\Api\Traits\WithSyncDBOperation;
 
 class ProcessRemoteToLocalSyncJob implements ShouldQueue
@@ -21,12 +22,16 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
         if(config('slimerdesktop.app.is_desktop')){
             $endpoint = config('slimerdesktop.api.base').'v1/desktop/local/pull';
 
+            $deviceUid = Settings::get('slimer_desktop_device_uid');
+            $branchUid = Settings::get('slimer_desktop_branch_uid');
+            
             $response = Http::timeout(180)
             ->retry(3)
             ->withToken(remoteSyncToken())
             ->get($endpoint, [
                 'tenant' => null,
-                'device_uid' => config('slimerdesktop.app.device_uid'),
+                'device_uid' => $deviceUid,
+                'branch_uid' => $branchUid,
             ]);
 
             $logs = collect($response->json('logs'))
@@ -59,7 +64,7 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
                 config('slimerdesktop.api.base') . "v1/desktop/local/ack/remote",
                 [
                     'tenant' => null,
-                    'device_uid' => config('slimerdesktop.app.device_uid'),
+                    'device_uid' => $deviceUid,
                     'last_processed_log_id' => $lastProcessedLogId,
                 ]
             );

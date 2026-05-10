@@ -46,6 +46,10 @@ class SyncLogger
             'version' => $data['version'] ?? 1,
             'transaction_type' => $data['transaction_type'] ?? null,
             'source' => $data['source'] ?? 'local',
+
+            'branch_uid' => $data['branch_uid'] ?? null,
+            'origin_branch_uid' => $data['origin_branch_uid'] ?? null,
+            'origin_device_uid' => $data['origin_device_uid'] ?? null,
         ]);
     }
 

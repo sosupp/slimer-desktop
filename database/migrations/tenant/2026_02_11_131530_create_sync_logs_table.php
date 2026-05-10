@@ -14,10 +14,12 @@ return new class extends Migration
         if(!Schema::hasTable('sync_logs')){
             Schema::create('sync_logs', function (Blueprint $table) {
                 $table->id();
+                $table->uuid('branch_uid')->nullable()->index();
                 $table->foreignId('origin_device_id')->nullable();
                 $table->foreignId('origin_branch_id')->nullable();
                 $table->uuid('origin_branch_uid')->nullable()->index();
                 $table->uuid('origin_device_uid')->nullable()->index();
+
                 $table->string('model');
                 $table->string('table')->nullable();
                 $table->unsignedBigInteger('model_id')->nullable();

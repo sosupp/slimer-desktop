@@ -86,14 +86,16 @@ class LocalToRemoteController extends TenantAwareController
 
     protected function processDevice(Request $request)
     {
-        $device = SyncDevice::query()->firstOrCreate(
+        Log::info('d uid', [$request->uid]);
+        $device = SyncDevice::query()->updateOrCreate(
             ['uid' => $request->uid],
             [
                 'branch_id' => $request->branch_id,
-                'branch_uid' => $request->branch_id,
+                'branch_uid' => $request->branch_uid,
                 'name' => $request->name,
                 'platform' => $request->platform,
                 'last_seen_at' => now(),
+                'data' => $request->data ?? null
             ]
         );
 
