@@ -21,10 +21,10 @@ class SyncDevice extends Model
     ];
 
     // relationships
-    // public function branch()
-    // {
-    //     return $this->belongsTo(Branch::class);
-    // }
+    public function branch()
+    {
+        return $this->belongsTo(config('slimerdesktop.models.branch'));
+    }
 
     public function cursor()
     {
