@@ -105,7 +105,7 @@ class RemoteDataForLocalController extends TenantAwareController
             // ->orWhere('origin_device_id', '!=', $device->id);
         })
         ->orderBy('id')
-        ->limit(200)
+        ->limit(500)
         ->get();
 
         return response()->json([

@@ -16,7 +16,7 @@ return new class extends Migration
                 $table->id();
 
                 $table->foreignId('branch_id');
-                $table->string('branch_uid')->unique()->nullable(); // unique device identifier
+                $table->string('branch_uid')->nullable(); // unique device identifier
 
                 $table->string('uid')->unique(); // unique device identifier
                 $table->string('name')->nullable();
