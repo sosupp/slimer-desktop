@@ -98,6 +98,7 @@ class RemoteDataForLocalController extends TenantAwareController
 
         $logs = SyncLog::query()
         ->where('id', '>', $cursor->last_synced_log_id)
+        ->where('created_at', '>=', $device->created_at)
         ->where(function ($query) use ($device) {
             $query->whereNull('branch_uid')
             ->orWhere('branch_uid', $device->branch_uid);
