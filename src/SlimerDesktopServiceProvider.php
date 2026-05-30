@@ -26,12 +26,12 @@ class SlimerDesktopServiceProvider extends ServiceProvider
     public function boot()
     {
         // Publish config, migrations, routes, etc.
-        if (DB::connection()->getDriverName() === 'sqlite') {
+        // if (DB::connection()->getDriverName() === 'sqlite') {
 
-            DB::statement('PRAGMA journal_mode=WAL;');
-            DB::statement('PRAGMA synchronous=NORMAL;');
-            DB::statement('PRAGMA busy_timeout=10000;');
-        }
+        //     DB::statement('PRAGMA journal_mode=WAL;');
+        //     DB::statement('PRAGMA synchronous=NORMAL;');
+        //     DB::statement('PRAGMA busy_timeout=10000;');
+        // }
 
         if($this->app->runningInConsole()){
             $this->publishes([
