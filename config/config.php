@@ -69,6 +69,8 @@ return [
     'syncs' => [
         'bidirection' => env('SLIMER_DESKTOP_SYNC_BIDIRECTION', false),
 
+        'snapshot_threshold' => env('SLIMER_DESKTOP_SNAPSHOT_THRESHOLD', 2000),
+
         'table_relations' => [
             // 'product_otpions' => [
             //     'product_id' => [

@@ -10,6 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Native\Desktop\Facades\Settings;
+use Sosupp\SlimerDesktop\Events\RequiresTableSnapshot;
 use Sosupp\SlimerDesktop\Http\Controllers\Api\Traits\WithSyncDBOperation;
 
 class ProcessRemoteToLocalSyncJob implements ShouldQueue
@@ -41,7 +42,7 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
                     'device_uid' => $deviceUid,
                     'branch_uid' => $branchUid,
                 ]);
-    
+
                 $logs = collect($response->json('logs'))
                 ->map(fn ($log) => [
                     ...$log,
@@ -50,22 +51,36 @@ class ProcessRemoteToLocalSyncJob implements ShouldQueue
                         ? $log['payload']
                         : (json_decode($log['payload'], true) ?? []),
                 ]);
-    
+
                 if ($logs->isEmpty()) {
-                    Log::info("log from remote is empty");
+                    // @todo Dispatch another job so user can listen and implement what need to be done
+                    $data = $response->json();
+                    Log::info("empty remote log", [
+                        'data' => $data,
+                    ]);
+
+                    if(isset($data['current_sync_id'])){
+                        RequiresTableSnapshot::dispatch(
+                            $data['current_sync_id'],
+                            $data['message'],
+                        );
+
+                        session(['lastSyncId' => $data['current_sync_id']]);
+                    }
+
                     return;
                 }
-    
+
                 $this->syncAsDBV3(new Request([
                     'logs' => $logs->toArray()
                 ]));
-    
+
                 // after local sync success send ack to remote
                 $lastProcessedLogId = $logs->last()['id'];
-    
+
                 // put this in section to reference in case api request timeout or failed
                 session(['lastProcessedLogId' => $lastProcessedLogId]);
-    
+
                 Log::info("last id", [$lastProcessedLogId]);
 
                 $this->sendAck($deviceUid, $lastProcessedLogId);

@@ -96,6 +96,14 @@ class RemoteDataForLocalController extends TenantAwareController
 
         $cursor = $device->cursor;
 
+        // Check if we should go recovery mode instead of sync
+        $currentSyncLog = DB::table('sync_logs')->latest('id')->value('id');
+        $snapshotThreshold = config('slimerdesktop.syncs.snapshot_threshold');
+
+        if($currentSyncLog - $cursor->last_synced_log_id > $snapshotThreshold){
+            return $this->getImportantSnapshots($currentSyncLog);
+        }
+
         $logs = SyncLog::query()
         ->where('id', '>', $cursor->last_synced_log_id)
         ->where('created_at', '>=', $device->created_at)
@@ -111,6 +119,15 @@ class RemoteDataForLocalController extends TenantAwareController
 
         return response()->json([
             'logs' => $logs
+        ]);
+    }
+
+    protected function getImportantSnapshots($lastSyncId)
+    {
+        return response()->json([
+            'logs' => [],
+            'message' => 'get_snapshots',
+            'current_sync_id' => $lastSyncId
         ]);
     }
 
